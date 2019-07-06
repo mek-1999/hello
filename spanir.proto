@@ -1,0 +1,458 @@
+syntax = "proto3";
+// Edited by Anshuman Dhuliya
+// Original by: Aditya/Megha
+
+//----------------------------------------------------------------------------//
+// This is a proto3 specification of the
+// three address spanir (currently for c language only)
+//----------------------------------------------------------------------------//
+
+package span.spill;
+
+// Represents the source location.
+message Loc {
+  int32 line = 1;
+  int32 col = 2;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : Types
+//----------------------------------------------------------------------------//
+
+// All basic types can be represented by their names: INT32, UINT32, CHAR,...
+
+// We don't need pointer type as it can be easily coded as a type name.
+// E.g.
+//   pointer-to pointer-to char: "p-p-CHAR"
+//   pointer-to struct Node: "p-s:Node"
+//   pointer-to an array of size 20: "p-a-c20"
+
+// We also don't need an array type since it too can be coded into a string.
+// Array of constant size 10: "a-c10"
+// Array of dimension [20][30]: "a-c20-c30"
+// Array of incomplete type: "a-i"
+// Array of array of variable size: "a-v-v"
+
+// For function signatures one can create dummy functions
+// with no body. We can name them like "fs:xyz" so that
+// by the prefix "fs" its clear they are being used as a dummy.
+// E.g.
+//   pointer-to func sig void(int, int): "p-fs:xyz"
+
+message FunctionType {
+  string returnType = 1; // TheTypeName
+  repeated string paramTypes = 2; // TheTypeName(s)
+  bool variadic = 3;
+}
+
+message RecordField {
+  string name = 1;
+  string type = 2; // TheTypeName
+}
+
+message RecordType {
+  string name = 1; // name format "s:..." or "u:..." (struct/union)
+  bool isStruct = 2; 
+  repeated RecordField fields = 3;
+  Loc loc = 10;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : Types
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// BOUND START: Operators
+// Only the ones needed for three address code representation.
+//----------------------------------------------------------------------------//
+
+/*Operators are listed in the order of precedence */
+enum BinaryOperatorKind {
+  //Multiplicative operators
+  BO_Mul = 0;
+  BO_Div = 1;
+  BO_Rem = 2;
+  //Additive operators
+  BO_Add = 3;
+  BO_Sub = 4;
+  //Bitwise shift operators
+  BO_Shl = 5;
+  BO_Shr = 6;
+  //Relational operators
+  BO_LT = 8;
+  BO_GT = 9;
+  BO_LE = 10;
+  BO_GE = 11;
+  //Equality operators
+  BO_EQ = 12;
+  BO_NE = 13;
+  //Bitwise AND operator
+  BO_And = 14;
+  //Bitwise XOR operator
+  BO_Xor = 15;
+  //Bitwise OR operator
+  BO_Or = 16;
+  //Assignment operators
+  BO_Assign = 17;
+}	
+
+enum UnaryOperatorKind {
+  UO_Plus = 0;
+  UO_Minus = 1;
+  UO_Not = 2;
+  UO_LNot = 3;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : Operators
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// BOUND START: Expressions
+//----------------------------------------------------------------------------//
+
+message LitExpr {
+  string type = 1; // TheTypeName
+  oneof val {
+    // use the `type` variable above to do
+    // appropriate conversion from the broad value types here.
+    int64 intVal = 2;
+    uint64 uIntVal = 3;
+    double doubleVal = 4;
+  }
+  Loc loc = 10;
+}
+
+message VarExpr {
+  string type = 1; // TheTypeName
+  string name = 2; // of form "v:foo:x" or "g:z" (local/global)
+  Loc loc = 10;
+}
+
+// Represents a function name in a CallExpr
+message FuncExpr {
+  string type = 1; // TheTypeName
+  string name = 2; // of form "f:foo" (function foo)
+  Loc loc = 10;
+}
+
+message ArrayExpr {
+  string type = 1; // TheTypeName
+  // Expressions that can occur in an array expr
+  enum IndexExprKind {
+    VAR_EXPR = 0;
+    LIT_EXPR = 1;
+  }
+  // The size of indexType, varExprs, litExprs is same.
+  // the indexType at a given index, governs which array to lookup
+  repeated IndexExprKind indexType = 2;
+  repeated VarExpr varExprs = 3;
+  repeated LitExpr litExprs = 4;
+  VarExpr of = 5;
+  Loc loc = 10;
+}
+
+message MemberExpr {
+  string type = 1; // TheTypeName
+  // list of names: for example x.y.z (x is a variable in foo())
+  // then the list is: "v:foo:x" "y" "z"
+	repeated string names = 2;
+  Loc loc = 10;
+}
+
+message BinaryExpr {
+  string type = 1; // TheTypeName
+	BinaryOperatorKind opCode = 2;
+
+  oneof oprnd1 {
+    VarExpr varOprnd1 = 3;
+    LitExpr litOprnd1 = 4;
+  }
+
+  oneof oprnd2 {
+    VarExpr varOprnd2 = 5;
+    LitExpr litOprnd2 = 6;
+  }
+  Loc loc = 10;
+}
+
+message UnaryExpr {
+  string type = 1; // TheTypeName
+  UnaryOperatorKind opCode = 2;
+  oneof oprnd {
+    VarExpr varOprnd = 3;
+    LitExpr litOprnd = 4;
+  }
+  Loc loc = 10;
+}
+
+// Special treatment for Deref and AddrOf expressions.
+message DerefExpr {
+  string type = 1; // TheTypeName
+  VarExpr oprnd = 2;
+  Loc loc = 10;
+}
+
+message AddrOfExpr {
+  string type = 1; // TheTypeName
+  oneof oprnd {
+    VarExpr varOprnd = 2;
+    FuncExpr funcOprnd = 3;
+    ArrayExpr arrayOprnd = 4;
+    MemberExpr memberOprnd = 5;
+  }
+  //string oprnd = 3;	   --oneof 'oprnd' will automatically select one of those fields which we can determine using built-in functions, so it doesn't allow to declare a separate variable for oneof
+  Loc loc = 10;
+}
+
+message SizeOfExpr {
+  string type = 1; // TheTypeName
+  VarExpr varExpr = 2; // a variable of VarArrayType only
+  Loc loc = 10;
+}
+
+message CastExpr {
+  // the type of this expression also doubles as the cast type
+  string type = 1; // TheTypeName
+  oneof oprnd {
+    VarExpr varOprnd = 2;
+    LitExpr litOprnd = 3;
+  }
+  Loc loc = 10;
+}
+
+message AllocExpr {
+  string type = 1; // TheTypeName
+  VarExpr oprnd = 2;
+  Loc loc = 10;
+}
+
+message CallExpr {
+  string type = 1; // TheTypeName
+  string callee = 5;
+  repeated string args = 6;
+  // Expressions that can occur in a function argument
+  enum ArgExprKind {
+    VAR_EXPR = 0;
+    LIT_EXPR = 1;
+  }
+  // The size of argType, varExprs, litExprs is same.
+  // the argType at a given index, governs which array to lookup
+  repeated ArgExprKind argType = 2;
+  repeated VarExpr varExprs = 3;
+  repeated LitExpr litExprs = 4;
+  Loc loc = 10;
+}
+
+message PhiExpr {
+  string type = 1; // TheTypeName
+  repeated VarExpr oprnds = 2;
+  Loc loc = 10;
+}
+
+message SelectExpr {
+  string type = 1; // TheTypeName
+  oneof cond {
+    VarExpr varCond = 2;
+    LitExpr litCond = 3;
+  }
+  VarExpr arg1 = 4;
+  VarExpr arg2 = 5;
+  Loc loc = 10;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : Expressions
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// BOUND START: Instructions
+//----------------------------------------------------------------------------//
+
+message AssignI {
+  string type = 1; // TheTypeName
+  oneof lhs {
+    VarExpr varLhs = 2;
+    ArrayExpr arrLhs = 3;
+    MemberExpr memberLhs = 4;
+    DerefExpr derefLhs = 5;
+  }
+  oneof rhs {
+    LitExpr litRhs = 6;
+    VarExpr varRhs = 7;
+    UnaryExpr unaryRhs = 8;
+    BinaryExpr binaryRhs = 9;
+    ArrayExpr arrRhs = 10;
+    MemberExpr memberRhs = 11;
+    DerefExpr derefRhs = 12;
+    AddrOfExpr addrOfRhs = 13;
+    CallExpr callRhs = 14;
+  }
+  Loc loc = 15;
+}
+
+message GotoI {
+  string type = 1; // TheTypeName
+	string label = 2;
+  Loc loc = 15;
+}
+
+message LabelI {
+  string type = 1; // TheTypeName
+	string label = 2;
+  Loc loc = 15;
+}
+
+message CondI {
+  string type = 1; // TheTypeName
+  oneof cond {
+    VarExpr varCond = 2;
+    LitExpr litCond = 3;
+  }
+	string trueLabel = 4;
+	string falseLabel = 5;
+  Loc loc = 15;
+}
+
+message ReturnI {
+  string type = 1; // TheTypeName
+  oneof arg {
+    VarExpr varArg = 2;
+    LitExpr litArg = 3;
+  }
+  Loc loc = 15;
+}
+
+message CallI {
+  string type = 1; // TheTypeName
+  CallExpr callExpr = 2;
+  Loc loc = 15;
+}
+
+message UseI {
+  string type = 1; // TheTypeName
+	repeated VarExpr vars = 2;
+  Loc loc = 15;
+}
+
+message ExReadI {
+  string type = 1; // TheTypeName
+	repeated VarExpr vars = 2;
+  Loc loc = 15;
+}
+
+message CondReadI {
+  string type = 1; // TheTypeName
+  VarExpr lhsVar = 2;
+  repeated VarExpr rhsVars = 3;
+  Loc loc = 15;
+}
+
+message LiveI {
+  string type = 1; // TheTypeName
+	repeated VarExpr vars = 3;
+  Loc loc = 15;
+}
+
+message UnDefValI {
+  string type = 1; // TheTypeName
+  repeated VarExpr vars = 2;
+  Loc loc = 15;
+}
+
+message BlockInfoI {
+  string type = 1; // TheTypeName (Void)
+  // it contains nothing
+  Loc loc = 15;
+}
+
+message NopI {
+  string type = 1; // TheTypeName (Void)
+  Loc loc = 15;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : Instructions
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// BOUND START: ControlFlowGraph
+//----------------------------------------------------------------------------//
+
+enum EdgeKind {
+	FALSE_EDGE = 0;
+	TRUE_EDGE = 1;
+	UNCOND_EDGE = 2;
+}
+
+message Instruction {
+  oneof insn {
+    AssignI assignInsn = 1;
+    GotoI gotoInsn = 2;
+    LabelI labelInsn = 3;
+    CondI consInsn = 4;
+    ReturnI returnInsn = 5;
+    CallI callInsn = 6;
+    UseI useInsn = 7;
+    ExReadI exReadInsn = 8;
+    CondReadI condReadInsn = 9;
+    LiveI liveInsn = 10;
+    UnDefValI unDefValInsn = 11;
+    BlockInfoI blockInfoInsn = 12;
+    NopI nopInsn = 13;
+  }
+}
+
+message BBEdge {
+  int32 start = 1;
+  int32 end = 2;
+  EdgeKind edgeKind = 3;
+}
+
+message BB {
+  int32 id = 1;
+  repeated Instruction insns = 2;
+  repeated BBEdge predecessors = 3;
+  repeated BBEdge successors = 4;
+}
+
+message CFG {
+  repeated BB basicBlocks = 1;
+  repeated BBEdge bbEdges = 2;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : ControlFlowGraph
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// BOUND START: TheTranslationUnit
+//----------------------------------------------------------------------------//
+
+message Function {
+  string name = 1;
+  FunctionType funcType = 2;
+  repeated string paramNames = 3;
+  CFG cfg = 4;
+  bool body = 5;
+  bool variadic = 6;
+  repeated Instruction insns = 7;
+}
+
+message Variable {
+  string type = 1;
+  string name = 2;
+}
+
+message TranslationUnit {
+  string name = 1; // generally the file name
+  string description = 2; // a short description
+  repeated Variable allVars = 3;
+  repeated Function allFunctions = 4;
+  repeated RecordType allRecords = 5;
+}
+
+//----------------------------------------------------------------------------//
+// BOUND END  : TheTranslationUnit
+//----------------------------------------------------------------------------//
+
