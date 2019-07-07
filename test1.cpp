@@ -6,92 +6,122 @@
 using namespace std;
 
 
-span::spill::Loc *loc;	//location
-map<string, span::spill::VarExpr *> allVars; //list for all the global and local variables (in the form of a map)
-vector<span::spill::AssignI *> assignInstrs; //all assignment instructions
-map<int, span::spill::BB *> basicBlocks; //all basic blocks
+span::spill::Loc loc;	//location
+map<string, span::spill::VarExpr> allVars; //list for all the global and local variables (in the form of a map)
+vector<span::spill::AssignI> assignInstrs; //all assignment instructions
+map<int, span::spill::BB> basicBlocks; //all basic blocks
+vector<span::spill::BBEdge> basicBlockEdges; //list of all edges between basic blocks
+vector<span::spill::Instruction> allInstructions; //list of all instructions
 
-void InitializeLoc()
-{
+void InitializeLoc() {
 	//Initializing the location object
-	loc = new span::spill::Loc();
-	loc->set_line(10);
-	loc->set_col(11);
+	loc.set_line(10);
+	loc.set_col(11);
 }
-void InitializeVars()
-{
+void InitializeVars() {
 	//Initializating the list with global and local variables
-	allVars["v:main:argc"] = new span::spill::VarExpr();
-	allVars["v:main:argc"]->set_type("INT32");
-	allVars["v:main:argc"]->set_name("v:main:argc");
-	allVars["v:main:argc"]->set_allocated_loc(loc);
 
-	allVars["v:main:argv"] = new span::spill::VarExpr();
-	allVars["v:main:argv"]->set_type("p-p-CHAR");
-	allVars["v:main:argv"]->set_name("v:main:argv");
-	allVars["v:main:argv"]->set_allocated_loc(loc);
+	//int argc (parameter of main function)
+	span::spill::VarExpr varExpr1;
+	varExpr1.set_type("INT32");
+	varExpr1.set_name("v:main:argc");
+	varExpr1.set_allocated_loc(&loc);
+	allVars["v:main:argc"] = varExpr1;
+	
+	//char *argv[] (parameter of main function)
+	span::spill::VarExpr varExpr2;
+	varExpr2.set_type("p-p-CHAR");
+	varExpr2.set_name("v:main:argv");
+	varExpr2.set_allocated_loc(&loc);
+	allVars["v:main:argv"] = varExpr2;
 
-	allVars["v:main:x"] = new span::spill::VarExpr();
-	allVars["v:main:x"]->set_type("INT32");
-	allVars["v:main:x"]->set_name("v:main:x");
-	allVars["v:main:x"]->set_allocated_loc(loc);
+	//int x (local to main function)
+	span::spill::VarExpr varExpr3;
+	varExpr3.set_type("INT32");
+	varExpr3.set_name("v:main:x");
+	varExpr3.set_allocated_loc(&loc);
+	allVars["v:main:x"] = varExpr3;
 
-	allVars["v:main:y"] = new span::spill::VarExpr();
- 	allVars["v:main:y"]->set_type("INT32");
-	allVars["v:main:y"]->set_name("v:main:y");
-	allVars["v:main:y"]->set_allocated_loc(loc);
+	//int y (local to main function)
+	span::spill::VarExpr varExpr4;
+	varExpr4.set_type("INT32");
+	varExpr4.set_name("v:main:y");
+	varExpr4.set_allocated_loc(&loc);
+	allVars["v:main:y"] = varExpr4;
 
-	allVars["v:main:z"] = new span::spill::VarExpr();
-	allVars["v:main:z"]->set_type("INT32");
-	allVars["v:main:z"]->set_name("v:main:z");
-	allVars["v:main:z"]->set_allocated_loc(loc);
+	//int z (local to main function)
+	span::spill::VarExpr varExpr5;
+	varExpr5.set_type("INT32");
+	varExpr5.set_name("v:main:z");
+	varExpr5.set_allocated_loc(&loc);
+	allVars["v:main:z"] = varExpr5;
 
-	allVars["v:g"] = new span::spill:VarExpr();
-	allVars["v:g"]->set_type("INT32");
-	allVars["v:g"]->set_name("v:g");
-	allVars["v:g"]->set_allocated_loc(loc);
+	//int g (global variable)
+	span::spill::VarExpr varExpr6;
+	varExpr6.set_type("INT32");
+	varExpr6.set_name("v:g");
+	varExpr6.set_allocated_loc(&loc);
+	allVars["v:g"] = varExpr6;
 }
 
 void InitializeAssignInstrs() {
 	//Assignment Instruction: x = 10;
-	assignInstrs.push_back(new span::spill::AssignI());
-	assignInstrs[0]->set_type("ASSIGN_INSTR");
-	assignInstrs[0]->set_allocated_varlhs(allVars["v:main:x"]);
-	span::spill::LitExpr litExpr1 = new span::spill::LitExpr();
-	litExpr1->set_type("LIT_EXPR");
-	litExpr1->set_intval(10);
-	litExpr1->set_allocated_loc(loc);
-	assignInstrs[0]->set_allocated_litrhs(litExpr1);
-	assignInstrs[0]->set_allocated_loc(loc);
+	span::spill::AssignI assignInstr1;
+	assignInstr1.set_type("ASSIGN_INSTR");
+	assignInstr1.set_allocated_varlhs(&allVars["v:main:x"]);
+	span::spill::LitExpr litExpr1;
+	litExpr1.set_type("LIT_EXPR");
+	litExpr1.set_intval(10);
+	litExpr1.set_allocated_loc(&loc);
+	assignInstr1.set_allocated_litrhs(&litExpr1);
+	assignInstr1.set_allocated_loc(&loc);
+	assignInstrs.push_back(assignInstr1);
 
 	//Assignment Instruction: y = 20;
-	assignInstrs.push_back(new span::spill::AssignI());
-	assignInstrs[1]->set_type("ASSIGN_INSTR");
-	assignInstrs[1]->set_allocated_varlhs(allVars["v:main:y"]);
-	span::spill::LitExpr litExpr2 = new span::spill::LitExpr();
-	litExpr2->set_type("LIT_EXPR");
-	litExpr2->set_intval(20);
-	litExpr2->set_allocated_loc(loc);
-	assignInstrs[1]->set_allocated_litrhs(litExpr2);
-	assignInstrs[1]->set_allocated_loc(loc);
+	span::spill::AssignI assignInstr2;
+	assignInstr1.set_type("ASSIGN_INSTR");
+	assignInstr1.set_allocated_varlhs(&allVars["v:main:y"]);
+	span::spill::LitExpr litExpr2;
+	litExpr2.set_type("LIT_EXPR");
+	litExpr2.set_intval(20);
+	litExpr2.set_allocated_loc(&loc);
+	assignInstr2.set_allocated_litrhs(&litExpr2);
+	assignInstr2.set_allocated_loc(&loc);
+	assignInstrs.push_back(assignInstr2);
 
 	//Assignment Instruction: z = y;
-	assignInstrs.push_back(new span::spill::AssignI());
-	assignInstrs[2]->set_type("ASSIGN_INSTR");
-	assignInstrs[2]->set_allocated_varlhs(allVars["v:main:z"]);
-	assignInstrs[2]->set_allocated_varrhs(allVars["v:main:y"]);
-	assignInstrs[2]->set_allocated_loc(loc);
+	span::spill::AssignI assignInstr3;
+	assignInstr3.set_type("ASSIGN_INSTR");
+	assignInstr3.set_allocated_varlhs(&allVars["v:main:z"]);
+	assignInstr3.set_allocated_varrhs(&allVars["v:main:y"]);
+	assignInstr3.set_allocated_loc(&loc);
+	assignInstrs.push_back(assignInstr3);
 
 	//Assignment Instruction: g = z;
-	assignInstrs.push_back(new span::spill::AssignI());
-	assignInstrs[3]->set_type("ASSIGN_INSTR");
-	assignInstrs[3]->set_allocated_varlhs(allVars["v:g"]);
-	assignInstrs[3]->set_allocated_varrhs(allVars["v:main:z"]);
-	assignInstrs[3]->set_allocated_loc(loc);
+	span::spill::AssignI assignInstr4;
+	assignInstr4.set_type("ASSIGN_INSTR");
+	assignInstr4.set_allocated_varlhs(&allVars["v:g"]);
+	assignInstr4.set_allocated_varrhs(&allVars["v:main:z"]);
+	assignInstr4.set_allocated_loc(&loc);
+	assignInstrs.push_back(assignInstr4);
+}
+
+void InitializeInstrs() {
+	//Pushing all the assignment instructions into the list of all instructions
+	for (int i = 0; i < assignInstrs.size(); i++)
+	{
+		span::spill::Instruction instr;
+		instr.set_allocated_assigninsn(&assignInstrs[i]);
+		allInstructions.push_back(instr);
+	}
 }
 
 int main(int argc, char *argv[])
 {
+  	// Verify that the version of the library that we linked against is
+  	// compatible with the version of the headers we compiled against.
+  	GOOGLE_PROTOBUF_VERIFY_VERSION;
+	
 	if (argc != 2){
 		cerr << "Usage: " << argv[0] << " SPAN_IR_FILE" << endl;
 		return -1;
@@ -100,8 +130,50 @@ int main(int argc, char *argv[])
 	InitializeLoc();
 	InitializeVars();
 	InitializeAssignInstrs();
+	InitializeInstrs();
 
-	basicBlocks[-1] = new span::spill::BB();
-	basicBlocks[-1]->
-	return 0;
+	//Creating basic blocks
+	span::spill::BB bb1, bb2;
+	
+	//-1 is always the start/entry basic block
+	*bb1.mutable_insns() = {allInstructions.begin(), allInstructions.end()};
+	bb1.set_id(-1);
+
+	//0 is always end/exit block
+	bb2.set_id(0);
+
+	//Creating an edge between basic blocks -1 and 0
+	span::spill::BBEdge bbEdge;
+	bbEdge.set_start(-1);
+	bbEdge.set_end(0);
+	bbEdge.set_edgekind(span::spill::EdgeKind::UNCOND_EDGE);
+	basicBlockEdges.push_back(bbEdge);
+
+	//The edge (-1, 0) will be a successor for basic block -1
+ 	*bb1.mutable_successors() = {basicBlockEdges.begin(), basicBlockEdges.end()};
+
+ 	//The edge (-1, 0) will be a predecessor for basic block 0
+ 	*bb2.mutable_predecessors() = {basicBlockEdges.begin(), basicBlockEdges.end()};
+
+ 	//Mapping the basic blocks -1 and 0
+	basicBlocks[-1] = bb1;
+	basicBlocks[0] = bb2;
+
+	//Serializing basic blocks -1 and 0
+	fstream output(argv[1], ios::out | ios::trunc | ios::binary);
+
+	if (!basicBlocks[-1].SerializeToOstream(&output)) {
+		cerr << "Failed to serialize basic block -1." << endl;
+		return -1;
+	}
+
+	if (!basicBlocks[0].SerializeToOstream(&output)) {
+		cerr << "Failed to serialize basic block 0." << endl;
+		return -1;
+	}
+
+	//Deleting all the global objects allocated by libprotobuf
+	google::protobuf::ShutdownProtobufLibrary();
+
+ 	return 0;
 }
