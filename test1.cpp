@@ -5,7 +5,6 @@
 
 using namespace std;
 
-
 span::spill::Loc loc;	//location
 map<string, span::spill::VarExpr> allVars; //list for all the global and local variables (in the form of a map)
 vector<span::spill::AssignI> assignInstrs; //all assignment instructions
@@ -25,42 +24,42 @@ void InitializeVars() {
 	span::spill::VarExpr varExpr1;
 	varExpr1.set_type("INT32");
 	varExpr1.set_name("v:main:argc");
-	varExpr1.set_allocated_loc(&loc);
+	*varExpr1.mutable_loc() = loc;
 	allVars["v:main:argc"] = varExpr1;
 	
 	//char *argv[] (parameter of main function)
 	span::spill::VarExpr varExpr2;
 	varExpr2.set_type("p-p-CHAR");
 	varExpr2.set_name("v:main:argv");
-	varExpr2.set_allocated_loc(&loc);
+	*varExpr2.mutable_loc() = loc;
 	allVars["v:main:argv"] = varExpr2;
 
 	//int x (local to main function)
 	span::spill::VarExpr varExpr3;
 	varExpr3.set_type("INT32");
 	varExpr3.set_name("v:main:x");
-	varExpr3.set_allocated_loc(&loc);
+	*varExpr3.mutable_loc() = loc;
 	allVars["v:main:x"] = varExpr3;
 
 	//int y (local to main function)
 	span::spill::VarExpr varExpr4;
 	varExpr4.set_type("INT32");
 	varExpr4.set_name("v:main:y");
-	varExpr4.set_allocated_loc(&loc);
+	*varExpr4.mutable_loc() = loc;
 	allVars["v:main:y"] = varExpr4;
 
 	//int z (local to main function)
 	span::spill::VarExpr varExpr5;
 	varExpr5.set_type("INT32");
 	varExpr5.set_name("v:main:z");
-	varExpr5.set_allocated_loc(&loc);
+	*varExpr5.mutable_loc() = loc;
 	allVars["v:main:z"] = varExpr5;
 
 	//int g (global variable)
 	span::spill::VarExpr varExpr6;
 	varExpr6.set_type("INT32");
 	varExpr6.set_name("v:g");
-	varExpr6.set_allocated_loc(&loc);
+	*varExpr6.mutable_loc() = loc;
 	allVars["v:g"] = varExpr6;
 }
 
@@ -68,41 +67,41 @@ void InitializeAssignInstrs() {
 	//Assignment Instruction: x = 10;
 	span::spill::AssignI assignInstr1;
 	assignInstr1.set_type("ASSIGN_INSTR");
-	assignInstr1.set_allocated_varlhs(&allVars["v:main:x"]);
+	*assignInstr1.mutable_varlhs() = allVars["v:main:x"];
 	span::spill::LitExpr litExpr1;
 	litExpr1.set_type("LIT_EXPR");
 	litExpr1.set_intval(10);
-	litExpr1.set_allocated_loc(&loc);
-	assignInstr1.set_allocated_litrhs(&litExpr1);
-	assignInstr1.set_allocated_loc(&loc);
+	*litExpr1.mutable_loc() = loc;
+	*assignInstr1.mutable_litrhs() = litExpr1;
+	*assignInstr1.mutable_loc() = loc;
 	assignInstrs.push_back(assignInstr1);
 
 	//Assignment Instruction: y = 20;
 	span::spill::AssignI assignInstr2;
 	assignInstr1.set_type("ASSIGN_INSTR");
-	assignInstr1.set_allocated_varlhs(&allVars["v:main:y"]);
+	*assignInstr1.mutable_varlhs() = allVars["v:main:y"];
 	span::spill::LitExpr litExpr2;
 	litExpr2.set_type("LIT_EXPR");
 	litExpr2.set_intval(20);
-	litExpr2.set_allocated_loc(&loc);
-	assignInstr2.set_allocated_litrhs(&litExpr2);
-	assignInstr2.set_allocated_loc(&loc);
+	*litExpr2.mutable_loc() = loc;
+	*assignInstr2.mutable_litrhs() = litExpr2;
+	*assignInstr2.mutable_loc() = loc;
 	assignInstrs.push_back(assignInstr2);
 
 	//Assignment Instruction: z = y;
 	span::spill::AssignI assignInstr3;
 	assignInstr3.set_type("ASSIGN_INSTR");
-	assignInstr3.set_allocated_varlhs(&allVars["v:main:z"]);
-	assignInstr3.set_allocated_varrhs(&allVars["v:main:y"]);
-	assignInstr3.set_allocated_loc(&loc);
+	*assignInstr3.mutable_varlhs() = allVars["v:main:z"];
+	*assignInstr3.mutable_varrhs() = allVars["v:main:y"];
+	*assignInstr3.mutable_loc() = loc;
 	assignInstrs.push_back(assignInstr3);
 
 	//Assignment Instruction: g = z;
 	span::spill::AssignI assignInstr4;
 	assignInstr4.set_type("ASSIGN_INSTR");
-	assignInstr4.set_allocated_varlhs(&allVars["v:g"]);
-	assignInstr4.set_allocated_varrhs(&allVars["v:main:z"]);
-	assignInstr4.set_allocated_loc(&loc);
+	*assignInstr4.mutable_varlhs() = allVars["v:g"];
+	*assignInstr4.mutable_varrhs() = allVars["v:main:z"];
+	*assignInstr4.mutable_loc() = loc;
 	assignInstrs.push_back(assignInstr4);
 }
 
@@ -111,7 +110,7 @@ void InitializeInstrs() {
 	for (int i = 0; i < assignInstrs.size(); i++)
 	{
 		span::spill::Instruction instr;
-		instr.set_allocated_assigninsn(&assignInstrs[i]);
+		*instr.mutable_assigninsn() = assignInstrs[i];
 		allInstructions.push_back(instr);
 	}
 }
